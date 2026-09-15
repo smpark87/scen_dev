@@ -46,11 +46,14 @@ tags: [regime, scenario, signpost, state space, nowcast, semantic factor]
 ### 1.3 처리 흐름
 
 ```
-상태공간 추정 → Regime 식별 → Transition 평가 → Scenario 구성·검증·채택
-                                                        ↓
-                              Signpost 설정 ← ─────────  ┤
-                                                        ↓
-                                          Scenario별 Conditional Outlook
+1. 상태공간 추정          (Market State — nowcast 포함)
+2. Regime 식별            현재 어떤 구조적 국면인가
+3. Transition 평가        유지 / 약화 / 전환 가능성 + 시계
+4. Scenario 구성·검증·채택  조건부 미래 경로 (연결 단위 심사)
+       ├─ 5. Signpost 설정     각 Scenario의 전제를 관측 가능한 조건으로 분해
+       └─ 6. Conditional Outlook   Scenario별 분포 + 가중 혼합분포
+
+   ※ 1~3은 데이터가 추정. 4는 구성·검증. 5~6은 4에서 파생.
 ```
 
 AI가 Regime을 서사로 번역하는 것은 **현재 상태의 해석**이며, 그 자체가 미래 Scenario의

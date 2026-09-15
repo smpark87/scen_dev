@@ -2,7 +2,7 @@
 title: scen_dev 아키텍처 설계
 subtitle: 헌장 §8 + 모델 정의(01)를 전제로 한 시스템 구조
 document_date: 2026-07-30
-status: v0.1 draft — 구조 확정, 세부는 구현하며 갱신
+status: v0.2 draft — 01 v2.0(Regime/Scenario 분리·연결 단위 심사) 반영
 source: internal
 category: architecture
 tags: [architecture, contract tables, as-of, jobs, LIORA]
@@ -19,26 +19,36 @@ tags: [architecture, contract tables, as-of, jobs, LIORA]
 ## 1. 전체 구성
 
 ```
-┌────────────────────── scen_dev (별도 repo·venv·이미지) ──────────────────────┐
-│                                                                              │
-│  [수집 jobs]        [저장 계층]           [엔진 배치]          [산출 계층]       │
-│  소스별 인제스터 ──► scen_raw            상태 갱신(일별) ────► scen_state       │
-│  (일/주/월/불규칙)   scen_series ───────► 모드·시나리오 탐지 ─► scen_scenario    │
-│                     scen_curve           Signpost 평가 ─────► scen_signpost    │
-│                     scen_forecast        전망 산출 ─────────► scen_outlook     │
-│                     scen_docs            해석·서사 생성 ─────► scen_narrative   │
-│                     scen_event           채점(상시) ────────► scen_score       │
-│                          ▲                                                    │
-│                          │ 읽기 전용 (판별 있는 것만)                            │
-│                    ngip_dev 기존 테이블 (hub_prices, gas_daily_prices,          │
-│                    steo_outlooks, weather_discussions, ai_documents …)         │
-└──────────────────────────────────────┬───────────────────────────────────────┘
-                                       │ 산출 계층 = 계약 (같은 RDS)
-                                       ▼ 읽기 전용
-┌────────────────────────────── ngip_dev (기존 웹) ────────────────────────────┐
-│  LIORA Estimation 워크스페이스 (ins-est: 캔버스 + assistant 레일)               │
-│  core/ask.py 신규 툴 3~4개  ·  routes: /api/scen/* (얇은 read-only)            │
-└──────────────────────────────────────────────────────────────────────────────┘
+═══ scen_dev (별도 repo · venv · 이미지) ═══════════════════════════════
+
+[수집]  소스별 인제스터 (일/주/월/불규칙)
+            ↓
+[저장]  scen_raw · scen_series · scen_curve · scen_forecast
+        scen_docs · scen_event
+            ↑ 읽기 전용 (판별 있는 것만)
+            └── ngip_dev 기존 테이블
+                hub_prices, gas_daily_prices, steo_outlooks,
+                weather_discussions, ai_documents …
+            ↓
+[엔진 — 빠름 / 일별]                     → [산출]
+        상태 갱신                            scen_state
+        Regime 갱신                          scen_regime
+        Transition 평가                      scen_transition
+        Signpost 평가                        scen_signpost
+        likelihood 갱신                      scen_scenario_state
+        전망(Outlook Ⅰ/Ⅱ) · 서사 · 채점      scen_outlook · scen_narrative · scen_score
+
+[엔진 — 느림 / 주·월 + 게이트]           → [산출]
+        후보 생성 (candidate만)              scen_scenario
+        Domain 심사 게이트                   scen_link · scen_evidence
+                                             scen_signpost_def
+
+═══════════════════════════════════════════════════════════════════════
+            ↓  산출 계층 = 계약 (같은 RDS) · 읽기 전용
+═══ ngip_dev (기존 웹) ═════════════════════════════════════════════════
+
+        LIORA Estimation 워크스페이스 (ins-est: 캔버스 + assistant 레일)
+        core/ask.py 신규 툴  ·  routes: /api/scen/* (얇은 read-only)
 ```
 
 원칙의 재확인 (헌장 §8):
@@ -147,12 +157,14 @@ breaking change는 버전 컬럼/뷰로 처리한다. 첫 구현 전에 스키�
 
 | 테이블 | 키 구조 초안 |
 |---|---|
-| `scen_outlook` | (as_of_date, run_id, **scenario_id 또는 'mixture'**, target, horizon, quantiles, moments) |
+| `scen_outlook` | (as_of_date, run_id, **conditioned_on**[regime_id / scenario_id / 'marginal' / 'mixture'], target, horizon, quantiles, moments) |
 | `scen_narrative` | (as_of_date, run_id, **subject_type**[regime/scenario], subject_id, text, evidence_refs, **verification_status**) |
 | `scen_score` | (date, metric, target, horizon, value, benchmark_ref) |
 | `scen_run` | (run_id, model_version, **embedding_version**, data_boundary, started, ended) |
 
-- `scen_outlook`은 Scenario별 조건부 분포와 가중 혼합분포를 함께 담는다
+- `scen_outlook`의 `conditioned_on`이 **Outlook Ⅰ/Ⅱ를 같은 테이블로 수용한다**
+  (헌장 §3.2). MVP 단계에서는 `marginal`·`regime_id`로만 채워지고, Scenario 층이
+  서면 `scenario_id`·`mixture` 행이 추가된다 — 스키마 변경 없이 확장된다
 - **`scen_narrative`는 Scenario의 본체가 아니다.** Regime 또는 Scenario에 종속된 설명
   산출물이며, `evidence_refs`와 `verification_status`가 **필수**다. 근거 참조 없는
   서사는 저장하지 않는다
@@ -165,6 +177,29 @@ breaking change는 버전 컬럼/뷰로 처리한다. 첫 구현 전에 스키�
 - 모든 산출 행은 `run_id`를 갖는다 — 어느 모델 버전·임베딩 버전·데이터 경계에서 나온
   값인지 항상 추적 가능
 - 서사·이벤트 추출에 쓰인 LLM 모델·프롬프트 버전도 `scen_run`에 기록한다 (서사 재현성)
+
+### 3.7 벡터 인덱스 정책 **[원칙]** — 인프라 규모를 좌우하는 결정
+
+> **ANN 인덱스는 필요한 계층에만 건다.** 이 한 줄이 RAM 요구를 수백 GB 바꾼다.
+
+실측 근거 (ngip 운영 DB, 2026-07-31): `ai_document_chunks` 60,636 청크에서
+**HNSW 인덱스만 466 MB — 청크당 7.9 KB.** 전체 청크당 20.7 KB의 38%다.
+
+| 계층 | 규모 | ANN 인덱스 | 이유 |
+|---|---|---|---|
+| **청크 벡터** | 수천만 | **걸지 않는다** | scen의 주 연산은 날짜 구간 집계·순차 스캔이지 최근접 검색이 아니다 |
+| **일자 집계 벡터** | 26년 × 365 ≈ 9,500 | **HNSW** | 유사국면 검색("지금이 과거 언제와 닮았나")의 실제 대상 |
+| 엔티티 집계 벡터 | 수만 | HNSW | 엔티티 단위 유사 검색 |
+
+3천만 청크에 HNSW를 걸면 인덱스만 **237 GB**다. 일자 집계에만 걸면 **75 MB**다.
+**유사국면 검색은 개별 청크가 아니라 시점 단위 질문이므로, 후자로 충분하다.**
+
+부수 규칙:
+- 임베딩은 `halfvec`(float16) 저장을 기본으로 한다 — 벡터 크기 절반, 품질 손실 미미.
+  단 §10.4(원본 보존)는 유지 — 정밀도 축소는 저장 형식 선택이지 변환이 아니다
+- **청크 원문은 S3에 두고 DB에는 벡터·메타데이터만** 둔다. scen의 집계 연산은 원문을
+  읽지 않으며, 원문은 추출(1회)과 표시에만 필요하다
+- 위 셋을 적용하면 청크당 20.7 KB → **약 7 KB**로 내려간다
 
 ## 4. `as_of` 강제 — 구현 위치
 
@@ -300,12 +335,33 @@ UI 상세(카드 구성·차트)는 엔진 산출물이 실물로 나온 뒤 확
 |---|---|---|
 | 1 | `schema.py` + `asof.py` + scen_raw/series/docs 생성 | 모든 것의 토대. **vintage 축적은 하루라도 빨리 시작해야 하는 자산** |
 | 2 | 수집 인제스터: 무료·기보유 소스부터 (STEO 백필, EIA vintage, FERC 프로파일, NOAA) | 데이터 명세 트랙 2 |
-| 3 | E1~E6 실증 (01 §8) — 노트북/스크립트 수준 | 엔진 설계 확정 전 가설 검증. **E6는 아카이브 수집과 독립** (문장쌍 + 기존 코퍼스 샘플로 즉시 가능) — 수집과 병렬 진행 |
-| 4 | 엔진 MVP: state_update + 단순 모드 탐지 + scoring | 상시 채점 루프를 최대한 일찍 돌림 (헌장 §7.1). **게이트: E6 판정 전에 착수 금지** — Factor 위에 모델을 올린 뒤 임베딩이 바뀌면 전체 재추정이므로, 임베딩 방식 확정이 선행조건 |
-| 5 | 계약 테이블 채우기 + LIORA 툴 1개 (`get_scenario_state`) | 끝-끝 관통을 얇게 먼저 |
-| 6 | 시나리오·서사·Signpost 고도화, Estimation 캔버스 | 관통된 파이프 위에서 반복 |
+| 3 | **E1~E6** 실증 (01 §10) — 노트북/스크립트 수준 | 상태·Regime 설계 확정 전 가설 검증. **E6는 아카이브 수집과 독립** (문장쌍 + 기존 코퍼스 샘플로 즉시 가능) — 수집과 병렬 |
+| 4 | 엔진 MVP (상태·Regime): state_update + regime_refresh + **outlook Ⅰ** + scoring | 상시 채점 루프를 최대한 일찍 돌림 (헌장 §7.1). **Outlook Ⅰ이 없으면 채점할 대상이 없다** — 헌장 §3.1~3.2 |
+| 5 | 계약 테이블 채우기 + LIORA 1차 툴 (`get_market_state`·`get_regime_status`·`get_market_outlook`) | 끝-끝 관통을 얇게 먼저. **전망까지 관통해야 관통이다** |
+| 6 | **E7~E10** 실증 | Scenario 층 착수 전 검증 — 연결 등급의 신뢰성·반증 회수·층 분리·Signpost 안정성 |
+| 7 | Scenario 층: propose / review 게이트 / link·evidence / likelihood 갱신 | E7~E8 통과가 선행조건 |
+| 8 | **Outlook Ⅱ**(Scenario 조건부 + 혼합분포) + 조건부 calibration 채점 | Scenario 층이 서야 가능 |
+| 9 | Signpost 고도화, Estimation 캔버스, E11 | 관통된 파이프 위에서 반복 |
+
+> **Outlook은 단계 4에 반드시 들어간다.** 헌장 §3.2의 Ⅰ/Ⅱ 구분에 따라, 상태·Regime만
+> 있어도 산출 가능한 **Marginal / Regime-conditional 분포(Ⅰ)** 를 MVP에서 내놓고
+> 즉시 채점을 시작한다. Scenario 조건부(Ⅱ)는 Scenario 층이 선 뒤 단계 8에서 붙는다.
+> v0.2까지 Outlook이 마지막 단계에 있어 `scoring`이 채점할 대상 없이 도는 모순이 있었다.
 
 **원칙: 끝-끝을 얇게 먼저 관통하고, 각 층을 깊게 하는 것은 그다음이다.**
+
+### 9.1 게이트 — 무엇이 무엇을 막는가
+
+게이트는 **되돌리기 비싼 커밋** 앞에만 둔다. 배관 구축은 막지 않는다.
+
+| 게이트 | 막는 것 | 막지 않는 것 |
+|---|---|---|
+| **E6 판정** | Factor·상태 모델의 **프로덕션 파라미터 확정** (임베딩이 바뀌면 재추정) | 파이프라인·스키마·수집·배관 구축. 임베딩 모듈을 버전화·교체 가능하게 설계하면 병렬 진행 가능 |
+| **E7·E8 통과** | **Scenario 층 착수** — 연결 등급을 신뢰할 수 없으면 채택 체계가 성립 안 함 | 상태·Regime 층 전체 |
+
+> v0.1의 "E6 판정 전 엔진 MVP 착수 금지"는 과한 게이트였다. §10.4(원본 임베딩 보존 +
+> 어댑터)를 채택한 이상 재도출 비용이 낮으므로, 게이트는 *배관 착수*가 아니라
+> *운영 파라미터 확정* 앞으로 이동한다.
 
 ## 10. ngip RAG와의 격리 — 임베딩 공유의 역방향 위험 차단
 
@@ -381,8 +437,10 @@ scen 산출물을 RAG 인덱싱 대상에서 상시 제외한다.
 |---|---|---|
 | 1 | 종속변수 목록 (01 §9 — 도메인 판단) | 엔진 MVP 전. **Domain Logic 축과 협의 필요** |
 | ~~2~~ | ~~임베딩 모델~~ | **확정 (2026-07-30): 시작은 ngip와 동일 (text-embedding-3-small, 1536) — 단, "동일"은 오늘의 편의이지 계약이 아니다 (§10).** 조건: ① 모든 임베딩 행에 모델명·버전 기록 ② 임베딩 단독으로 Factor를 만들지 않음 — 방향·스탠스는 구조화 이벤트 추출(`scen_event`)이 담당 (01 §8 E6) |
-| 3 | 계약 테이블 스키마 확정 리뷰 | 단계 5 전 |
-| 4 | 클라우드 배포 형태 (ngip jobs 스택 공유 vs 독립 스택) | 로컬 검증 후. **DB는 우선 동일 RDS 인스턴스(테이블 분리)로 시작** — scen 아카이브(수백만 문서 벡터)의 디스크·인덱스 메모리·IOPS 부하가 ngip 운영과 겹치면 scen 테이블만 별도 인스턴스로 분리 (테이블 계약 구조라 이전해도 아키텍처 불변). 참고: scen의 주 연산은 ANN 검색이 아니라 날짜 구간 집계 — ANN 인덱스는 유사국면 검색에만 필요 |
+| 3 | 계약 테이블 스키마 확정 리뷰 | 단계 5 전 (Scenario 계층은 단계 7 전) |
+| 8 | `scenario_propose`의 후보 생성 알고리즘 | E7 결과에 종속. 조합적 생성의 범위·가지치기 규칙 |
+| 9 | Domain 심사 게이트의 운영 형태 | 단계 7 전. 누가·얼마나 자주·어떤 UI로 연결 등급을 확정하는가 — 이것이 병목이 되면 §6.2 가드레일이 무력화된다 |
+| ~~4~~ | ~~클라우드 배포 형태~~ | **결론 변경 (2026-07-31, 실측 근거).** 구 판단은 "동일 RDS로 시작, 부하 겹치면 분리"였으나 실측 결과 **분리 시점이 훨씬 이르고 트리거도 다르다.** 현 운영 DB는 **db.t4g.small / 2 GB RAM / 20 GB**이며 이미 HNSW 인덱스(466 MB)가 shared_buffers(413 MB)를 초과한다. 현 디스크는 **약 91만 청크에서 소진**된다(현재의 15배 — FERC 전량 백필 + 아카이브 몇 개면 도달). → **1~2단계는 현 인스턴스, 아카이브 수집 단계부터 scen 전용 인스턴스로 분리.** 트리거는 RAM이 아니라 **스토리지·IOPS**. 상세 사양은 `04-infrastructure-requirements.md` |
 | 5 | Estimation 캔버스 상세 | 엔진 산출물 실물 후 |
 | 6 | 서사 생성(③층) LLM 선택·비용 구조 | 엔진 MVP 시. 배치에서 LLM API 호출 — 모델·프롬프트 버전을 `scen_run`에 기록해 서사 재현성 확보. 이벤트 추출(`scen_event`)용 LLM도 동일 취급 |
 | 7 | 모니터링·알림 | 엔진 MVP 시. 잡 실패·데이터 지연(소스가 안 오는 날)·surprise 급등 알림 — ngip `rag_healthcheck` 패턴 준용 |
