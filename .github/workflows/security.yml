@@ -1,0 +1,50 @@
+name: Security checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    name: Headquarters source security gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Check all authored sources and new risky APIs
+        env:
+          SECURITY_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          python scripts/security_source_gate.py --all
+          if [ -n "$SECURITY_BASE" ] && git cat-file -e "${SECURITY_BASE}^{commit}" 2>/dev/null; then
+            python scripts/security_source_gate.py --range "$SECURITY_BASE" HEAD
+          fi
+
+      - name: Test the security gate
+        run: python -m unittest discover -s tests -p "test_security_source_gate.py"
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,20 @@
+#!/bin/sh
+# 작성 소스의 새 보안 위험을 커밋 전에 확인한다.
+set -eu
+repo=$(git rev-parse --show-toplevel)
+cd "$repo"
+
+if [ -x .venv/Scripts/python.exe ]; then
+  py=.venv/Scripts/python.exe
+elif [ -x .venv/bin/python ]; then
+  py=.venv/bin/python
+elif command -v python3 >/dev/null 2>&1; then
+  py=python3
+elif command -v python >/dev/null 2>&1; then
+  py=python
+else
+  echo 'Python is required to run the security source gate.' >&2
+  exit 1
+fi
+
+exec "$py" scripts/security_source_gate.py --staged
