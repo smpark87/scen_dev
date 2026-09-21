@@ -8,6 +8,12 @@ category: report
 
 # AI 기반 Scenario Planning 체계 구축 — 추진(안)
 
+> **2026-09-21 방향 갱신:** 이 추진안은 당시 보고용 기록이다. 현재 제품·개발 방향은
+> [LIORA OUTLOOK — 제품 방향과 구축 원칙](09-outlook-direction.md)을 따른다.
+> OUTLOOK은 scen_dev에서 개발 후 LIORA 독립 시 통합하며, 정형데이터 기반 수급·가격
+> 전망부터 구현한다. 비정형 근거를 통해 전망 가정을 재검토·갱신하는 연결은 핵심 요건이다.
+> 아래 일정·예산·NGIP 확장 방식·전체 구축 범위를 현재 확정 사항으로 간주하지 않는다.
+
 **LAI Planning Team** · 2026-07-31
 
 ---

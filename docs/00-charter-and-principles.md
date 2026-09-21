@@ -1,6 +1,6 @@
 ---
 title: scen_dev 헌장 — 방향성·요건·원칙
-subtitle: 이 문서가 다른 모든 산출물을 규율한다
+subtitle: 기존 헌장 — 최신 OUTLOOK 방향은 09 문서를 우선 적용
 document_date: 2026-07-30
 status: v2.0 — Regime/Scenario 분리 및 확정 수준 3단계 반영
 source: internal
@@ -10,9 +10,11 @@ tags: [charter, principles, scope, scenario planning]
 
 # scen_dev 헌장
 
-> **이 문서는 최상위 규율 문서다.** 데이터 명세, 모델 설계, 구현, 검증 계획은 전부
-> 이 문서에서 도출되어야 하며, 이 문서와 충돌하면 그 산출물이 틀린 것이다.
-> 새로운 제안은 §10 체크리스트를 통과해야 한다.
+> **2026-09-21 방향 갱신:** [LIORA OUTLOOK — 제품 방향과 구축 원칙](09-outlook-direction.md)을
+> 먼저 읽는다. LIORA의 세 번째 프로젝트로 scen_dev에서 개발하며, 정형데이터 기반
+> 수급·가격 전망부터 작게 구현한다. 비정형 근거와 전망 가정의 연결은 처음부터 설계에 포함한다.
+> 아래 헌장은 이전 설계로 보존하며, 최신 합의와 충돌하는 범위·구현 순서는 09 문서를 우선한다.
+> 아래의 전체 Regime·Transition·Scenario 체계를 초기 구현의 필수조건으로 간주하지 않는다.
 
 ### 0. 확정 수준 표기 — 무엇이 얼마나 굳어 있는가
 
