@@ -1,7 +1,7 @@
 ---
 title: OUTLOOK — 엑셀 기준 데이터 확보 범위와 DB 공백
 document_date: 2026-09-22
-status: GDP 운영 적재 완료, 금리·JODI-Gas job 구현·공식 원천 dry-run 완료
+status: GDP 운영 적재 완료, 금리·JODI-Gas·GIE LNG job 구현·공식 원천 dry-run 완료(배포 대기)
 source: 기존 엑셀 검토, 운영 DB 메타데이터 및 집계, 공식 데이터 제공기관 안내
 ---
 
@@ -31,6 +31,9 @@ ECS 첫 실행은 AWS 내부 오류로 생성 전에 실패해 실제 서버 실
 사용자 지시에 따라 금리 job 배포와 중앙 DB 최초 적재는 하지 않았다.
 JODI-Gas의 국가별 월간 생산·수요·LNG/파이프 교역·재고도 같은 경계로 구현했다.
 공식 전체 파일 dry-run은 94개국·315,758행·2,044계열을 확인했고 운영 적재는 하지 않았다.
+GIE LNG Database는 유럽 수입터미널의 설비용량·저장용량·상태·가동연도 snapshot job과
+OUTLOOK 조회까지 구현했다. 공식 dry-run은 77행·25개국·70개 터미널을 확인했으며,
+신규 DB migration과 job 배포·최초 적재는 하지 않았다.
 
 | 엑셀 기준 항목 | 현재 상태 | 확인된 연결 또는 보완 필요 |
 |---|---|---|
@@ -47,7 +50,7 @@ JODI-Gas의 국가별 월간 생산·수요·LNG/파이프 교역·재고도 같
 | 호주 LNG 수출 | JODI 연결 구현·배포 대기 | 호주 `EXPLNG` 실측 계열. 미국 출발 카고와 분리 |
 | 세계·MENA·호주 가스 생산 | JODI 연결 구현·배포 대기 | 국가별 `INDPROD` 제공. MENA·세계 집계 구성과 결측 정책 필요 |
 | 중국 파이프라인 수입 | JODI 연결 구현·배포 대기 | 중국 `IMPPIP`를 LNG `IMPLNG`와 별도 저장 |
-| 유럽 Regas capacity | 미확인 | 국가·터미널별 재기화능력, 가동·증설 일정, 과거 이력 필요 |
+| 유럽 Regas capacity | GIE 연결 구현·배포 대기 | 2026-08-26판 77행·25개국·70개 터미널. 명목 연간/시간당 용량·저장용량·상태·가동연도 snapshot이며 실제 일별 send-out은 ALSI가 필요 |
 | 글로벌·미국·호주·기타 액화능력 | 미국 보유, 해외 공개 후보 확인 | GEM GGIT는 글로벌 수출터미널의 용량·상태·시작연도 스냅샷을 공개한다. 무인 다운로드 경로를 검증한 뒤 연결하며, 과거 발표 당시의 계획 변화는 별도 버전 이력이 필요 |
 | 국가별 가스 수요·수입·재고 | JODI 연결 구현·배포 대기 | 저장량은 `CLOSTLV`, 증감은 `STOCKCH`로 구분. 현재 `CLOSTLV` M3는 65개국이며 유럽 다수·JP·KR·US는 있지만 CN·AU·QA는 없음. 저장 형태 구분은 제공하지 않음 |
 | 수출국-수입국 LNG 교역 | 미국 출발만 일부 충족 | 호주·카타르·동남아 등 출발국을 포함한 양자 교역 필요 |
@@ -82,7 +85,7 @@ WTI의 OPEC+·비OPEC 생산과 전략비축유는 엑셀의 추가 구상 항�
 - DB의 NOAA CPC HDD/CDD는 TX·PA·NM·LA·WV·OK·OH·CO·ND·WY·UT·AR·KS·CA·MT
   15개 주의 인구가중 월간 합이며, 2015-01~2026-09가 현재 적재돼 있다.
 - 초기 `market_indicators` 실사에서는 해외 가스 수급·Regas·GDP·정책금리 전용 계열을
-  확인하지 못했다. GDP는 이후 중앙 적재했고, 정책금리와 JODI-Gas는 적재 job과 조회
+  확인하지 못했다. GDP는 이후 중앙 적재했고, 정책금리·JODI-Gas·GIE는 적재 job과 조회
   코드까지 준비했으나 이 문서 시점에는 배포·운영 적재하지 않았다.
 
 ## 3. 보완 소스 후보
@@ -154,10 +157,10 @@ GIIGNL 2026 Annual Report 공개 PDF에는 2025년 말 글로벌 524 MTPA와 국
 
 ## 6. 다음 작업 순서
 
-1. 금리·JODI-Gas job 배포와 최초 중앙 DB 적재는 별도 승인을 받은 뒤 실행한다.
+1. 금리·JODI-Gas·GIE LNG job, GIE migration과 최초 중앙 DB 적재는 별도 승인을 받은 뒤 실행한다.
 2. 기존 DB의 15개 주 HDD/CDD와 JODI `CLOSTLV`를 초기 모델 입력으로 연결한다.
-3. 키가 필요 없는 GIE LNG Database XLSX를 유럽 재기화 설비·증설·계획의 기준표로
-   연결하고, ALSI API key 발급 후 일별 재고·send-out·선언용량을 백필한다.
+3. ALSI API key 발급과 GIE 설비명/EIC crosswalk 검토 후 유럽 터미널의 일별
+   재고·send-out·선언용량을 백필한다.
 4. GEM GGIT 전체 파일은 공식 폼으로 release 원본을 반입한 뒤 자동 검증·snapshot 적재한다.
    고정 무인 다운로드가 확인되기 전까지 공개 country/status 집계를 자산 일정 대신 쓰지 않는다.
 5. JODI가 제공하지 않는 CN·AU·QA 재고와 양자 LNG 교역을 후속 원천으로 보완한다.
@@ -167,3 +170,17 @@ GIIGNL 2026 Annual Report 공개 PDF에는 2025년 말 글로벌 524 MTPA와 국
 [유럽 재기화와 글로벌 액화 프로젝트 데이터 설계](12-lng-capacity-and-project-sources.md)에 기록한다.
 
 이는 데이터 확보 범위 합의이며, 운영 DB에 신규 테이블을 만들거나 수집기를 배포하는 결정은 아니다.
+
+## 7. 2026-09-22 중앙 DB 재확인
+
+`scen_ro`와 read-only 세션으로 운영 DB를 다시 확인했다.
+
+| 항목 | 운영 DB 현재 상태 |
+|---|---|
+| World Bank GDP | 24,645행, 최종 적재 2026-09-21 23:31:28 UTC |
+| Federal Reserve 금리 5계열 | 0행 |
+| JODI-Gas | 0행 |
+| GIE LNG release·asset 표 | migration 미적용으로 테이블 없음 |
+
+따라서 금리·JODI·GIE는 **코드와 공식 원천 dry-run이 완료된 상태**이지, OUTLOOK이
+운영 DB에서 데이터를 읽을 수 있는 상태는 아니다. 배포 승인 전에는 이 상태를 유지한다.
