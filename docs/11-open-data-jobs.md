@@ -184,3 +184,19 @@ JODI 정의상 이는 국가 영토 내 recoverable gas 월말 총량이며 LNG 
 위 순서는 쉬운 자동 수집부터 진행하기 위한 제안이다. GIE의 키 발급 절차 등이 필요하면
 무인 수집 가능한 다른 항목부터 진행한다. 원본 다운로드와 검증을 실제 실행하기 전에는
 공백이 해소됐다고 표시하지 않는다.
+
+### 4번 후보 조사 결과
+
+2026-08-26판 [GIE LNG Database](https://www.gie.eu/transparency/databases/lng-database/)
+공개 XLSX를 실제 검증했다. 77행·25개국·70개 터미널이며 operational 44행,
+planned 21행, under construction 6행이다. 설비·증설 단위의 연간 send-out capacity,
+저장용량과 start-up year를 제공하고 API key가 필요 없어 첫 job 대상으로 확정한다.
+
+일별 운영자료는 ALSI가 `inventory`, `sendOut`, `dtmi`, `dtrs`를 2012년 또는 시설
+가동일부터 제공한다. 공개·무료지만 등록 후 개인 API key가 필요하다. XLSX와 ALSI 사이에
+공통 EIC가 없으므로 terminal-name/EIC crosswalk를 검토해 저장한다.
+
+글로벌 액화 프로젝트의 1차 후보는 GEM GGIT다. 전체 자산 release는 다운로드 폼 뒤에 있고
+확인 가능한 무인 고정 URL이 없으므로, 공식 원본을 통제된 S3 inbox에 반입한 뒤 parser job이
+자동 검증·snapshot 적재하는 방식으로 시작한다. 상세 판정과 DB 원칙은
+[유럽 재기화와 글로벌 액화 프로젝트 데이터 설계](12-lng-capacity-and-project-sources.md)를 따른다.
