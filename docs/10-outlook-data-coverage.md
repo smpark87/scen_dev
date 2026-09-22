@@ -48,14 +48,14 @@ JODI-Gas의 국가별 월간 생산·수요·LNG/파이프 교역·재고도 같
 | 세계·MENA·호주 가스 생산 | JODI 연결 구현·배포 대기 | 국가별 `INDPROD` 제공. MENA·세계 집계 구성과 결측 정책 필요 |
 | 중국 파이프라인 수입 | JODI 연결 구현·배포 대기 | 중국 `IMPPIP`를 LNG `IMPLNG`와 별도 저장 |
 | 유럽 Regas capacity | 미확인 | 국가·터미널별 재기화능력, 가동·증설 일정, 과거 이력 필요 |
-| 글로벌·미국·호주·기타 액화능력 | 미국만 보유 확인 | 해외 액화설비·트레인·가동 일정과 연도별 용량 보완 필요 |
-| 국가별 가스 수요·수입·재고 | JODI 연결 구현·배포 대기 | 관측/계산 수요, LNG·파이프 수입, 월말 재고 제공. 재기화 이용률과 LNG 탱크·지하저장 구분은 JODI만으로 해결되지 않음 |
+| 글로벌·미국·호주·기타 액화능력 | 미국 보유, 해외 공개 후보 확인 | GEM GGIT는 글로벌 수출터미널의 용량·상태·시작연도 스냅샷을 공개한다. 무인 다운로드 경로를 검증한 뒤 연결하며, 과거 발표 당시의 계획 변화는 별도 버전 이력이 필요 |
+| 국가별 가스 수요·수입·재고 | JODI 연결 구현·배포 대기 | 저장량은 `CLOSTLV`, 증감은 `STOCKCH`로 구분. 현재 `CLOSTLV` M3는 65개국이며 유럽 다수·JP·KR·US는 있지만 CN·AU·QA는 없음. 저장 형태 구분은 제공하지 않음 |
 | 수출국-수입국 LNG 교역 | 미국 출발만 일부 충족 | 호주·카타르·동남아 등 출발국을 포함한 양자 교역 필요 |
-| LNG 용선료 | 부분 보유, 이력 부족 | `freight_symbols`+`freight_prices`: 아시아·대서양, TFDE·TWO_STROKE, 2025-04~. 엑셀 Steam·DFDE/TFDE·MEGI/X-DF 및 평균 정의 대조 |
+| LNG 용선료 | 서로 다른 두 기준, 이력 단절 | 엑셀은 2014-01~2024-06 월간 글로벌 Steam·DFDE/TFDE·MEGI/X-DF와 유효 선형 평균. DB는 2025-04~ 일별 아시아·대서양 TFDE·TWO_STROKE 단기 용선료와 항로별 비용. 직접 연결하지 않음 |
 | LNG 선박 인도량 | 미확인 | 엑셀 Charter rates의 선박 인도량 이력 별도 확보 |
 | GDP·실질 GDP·성장률 | 중앙 DB 적재·조회 완료, ECS 실행 검증 대기 | World Bank job으로 265개 국가·지역의 1995~2025 데이터 확보. 한·중·일 합계는 별도 파생 필요. 실질 기준연도 2015 유지 |
 | 미국 정책금리 | 연결 구현·공식 원천 dry-run 완료, 배포 대기 | 엑셀 원형은 FRED `FEDFUNDS` 월평균 EFFR. 일별 `DFF`, 목표 하·상단 `DFEDTARL/U`, 연속 중간값도 별도 metric으로 연결. 중앙 DB 적재는 미실행 |
-| 미국 기온·평년편차·폭풍 건수/기간 | 부분 보유 | 주별 HDD/CDD는 있지만 엑셀 Weather의 TX·CA·NY·FL·IL 기온 및 폭풍 계열과 동일하지 않음 |
+| 미국 기상 | 초기 범위 확정 | NOAA CPC 인구가중 월간 HDD/CDD 15개 주, 2015-01~ 보유. 첫 모델은 이 지표만 쓰고 기온·평년편차·폭풍은 설명력이 부족할 때 검토 |
 
 WTI의 OPEC+·비OPEC 생산과 전략비축유는 엑셀의 추가 구상 항목이다.
 이미 값이 채워진 계열과 분리해 후속 수급 모델 요구로 관리한다.
@@ -73,6 +73,14 @@ WTI의 OPEC+·비OPEC 생산과 전략비축유는 엑셀의 추가 구상 항�
   트레인별 용량·일정은 `lng_trains`를 읽어야 하며 중복 증설 여부 등을 검증해야 한다.
 - `freight_series`와 `freight_rates`는 비어 있다. 현재 적재된 운임은
   `freight_symbols`와 `freight_prices`에 있다.
+- 엑셀 `Data`의 `Charter Rates`는 `Charter rates` 시트의 `Average` 열을 월별로
+  참조한다. 이 평균은 당시 값이 존재하는 Steam·DFDE/TFDE·MEGI/X-DF를 대상으로 하며,
+  DB의 지역별 단기 용선료나 $/MMBtu 항로비와 같은 정의가 아니다.
+- DB 운임은 2025-04-01~2026-09-21의 일별 자료다. 용선료는 아시아·대서양 ×
+  TFDE·TWO_STROKE 4계열이고, 별도로 ballast 비율, TCR, 항로별 `ROUTE_COST`를 보유한다.
+  사용자 엑셀은 2024-06에서 끝나므로 두 자료에는 직접 겹치는 검증 구간도 없다.
+- DB의 NOAA CPC HDD/CDD는 TX·PA·NM·LA·WV·OK·OH·CO·ND·WY·UT·AR·KS·CA·MT
+  15개 주의 인구가중 월간 합이며, 2015-01~2026-09가 현재 적재돼 있다.
 - 초기 `market_indicators` 실사에서는 해외 가스 수급·Regas·GDP·정책금리 전용 계열을
   확인하지 못했다. GDP는 이후 중앙 적재했고, 정책금리와 JODI-Gas는 적재 job과 조회
   코드까지 준비했으나 이 문서 시점에는 배포·운영 적재하지 않았다.
@@ -91,6 +99,7 @@ WTI의 OPEC+·비OPEC 생산과 전략비축유는 엑셀의 추가 구상 항�
 | [GIE ALSI/AGSI API 안내](https://www.gie.eu/transparency-platform/GIE_API_documentation_v005.pdf) | LNG 재고·send-out, 가스 저장 운영 데이터 | 현행 API 접근조건·키·커버리지 확인. 설비능력과 실제 흐름 구분 |
 | [JODI-Gas](https://www.jodidata.org/gas/database/overview.aspx) | 국가별 월간 가스 생산·수요·LNG/파이프라인 수출입·재고 | job·공식 원천 dry-run 완료. 국가별 누락월·품질등급을 지역 집계와 모델 입력에서 처리 |
 | [GIIGNL Annual Report](https://www.giignl.org/annual-report) | 글로벌 LNG 교역·액화·재기화능력의 연간 기준 및 대조 | 공개 PDF와 회원 전용 상세 Excel의 접근 범위 구분 |
+| [Global Energy Monitor GGIT](https://globalenergymonitor.org/projects/global-gas-infrastructure-tracker) | 글로벌 액화·재기화 터미널의 용량·상태·시작연도 | CC BY 4.0 공개 데이터. 전체 파일은 다운로드 폼 경유이며 고정 무인 다운로드 URL 검증 필요 |
 
 GDP 소스/시리즈는 [World Bank job](11-open-data-jobs.md)으로 확정·실수집했다.
 정책금리는 FRED 공개 CSV로 확정했고 [금리 job](11-open-data-jobs.md)에서 데이터 계약을
@@ -106,12 +115,50 @@ GDP 소스/시리즈는 [World Bank job](11-open-data-jobs.md)으로 확정·실
 - 과거 실적, 외부기관 전망, 우리 시나리오 가정을 구분한다.
 - 국가별 시계열을 원천으로 보존하고 EU·유럽·아시아·MENA 집계의 포함 국가를 명시한다.
 - 관측기간·발표/수집 시점·출처를 남기고, 외부 전망은 발간 시점과 전망 대상 기간을 구분한다.
+- JODI `CLOSTLV`는 월말 국가 재고 수준이고 `STOCKCH`는 월중 증감이다. 둘을 혼용하지 않는다.
+- JODI 월말 재고는 국가 영토 안의 recoverable gas 총량으로 사용하며 LNG 탱크 재고나
+  지하저장(UGS) 재고라고 단정하지 않는다.
+- 운임 엑셀의 월간 글로벌 평균, DB의 지역별 일별 용선료, 항로별 $/MMBtu 비용을
+  서로 다른 변수로 보존한다.
 
-## 5. 다음 작업 순서
+## 5. 2026-09-22 추가 판정
+
+### LNG 운임
+
+기준이 다르다. 엑셀 모델은 S&P Global 자료에서 2014-01~2024-06의 Steam,
+DFDE/TFDE, MEGI/X-DF 월간 spot charter rate와 그 평균을 사용한다. DB는 Platts LNG
+Daily에서 2025-04 이후의 아시아·대서양 단기 TFDE·Two-Stroke 용선료를 일별로 저장하고,
+별도로 항로별 운송비를 $/MMBtu로 보유한다. 초기 모델에서는 엑셀 평균과 DB 계열을
+이어붙이지 않고, 장기 운임 이력을 새로 확보할 때 정의가 맞는 별도 계열로 관리한다.
+
+### 미국 외 액화능력
+
+**현재 스냅샷 확보는 비교적 쉽지만, 재현 가능한 과거 시계열과 무인 job은 한 단계 더
+검증해야 한다.** GEM GGIT는 글로벌 LNG 수출·수입 터미널을 자산 단위로 공개하고 상태,
+용량, 시작연도와 위치를 제공하며 CC BY 4.0으로 이용할 수 있다. 공개 요약 Google Sheet와
+전체 다운로드 폼은 확인했지만, 개발 환경에서 Google Sheet 직접 export는 503을 반환해
+안정적인 고정 URL은 아직 확인하지 못했다. 따라서 현재 시점 파일을 수동으로 적재하는
+수준은 쉽고, 정기 NGIP job으로 분류하려면 직접 다운로드 계약을 먼저 확정해야 한다.
+
+GIIGNL 2026 Annual Report 공개 PDF에는 2025년 말 글로벌 524 MTPA와 국가·프로젝트·
+트레인별 표가 있지만 상세 Excel은 회원 전용이고 공개 PDF는 상업적 이용·재배포 제한을
+명시한다. 자동 적재의 주원천보다 수동 대조 자료로만 검토한다.
+
+### HDD/CDD와 JODI 재고
+
+미국 기상은 우선 현재 DB의 15개 주 인구가중 HDD/CDD만 모델 후보로 쓴다. 별도 기온,
+평년편차와 폭풍 변수를 초기 필수 데이터에서 내린다. 국가별 저장량은 JODI `CLOSTLV`로
+시작한다. 현재 공개 파일의 M3 월말 재고는 65개국이며 JP·KR·US와 유럽 주요국은
+2010-01부터 2026-07까지 이어지지만 CN·AU·QA는 제공하지 않는다. 품질등급과 결측을
+보존하고, 부족 국가만 후속 원천을 찾는다.
+
+## 6. 다음 작업 순서
 
 1. 금리·JODI-Gas job 배포와 최초 중앙 DB 적재는 별도 승인을 받은 뒤 실행한다.
-2. JODI의 국가별 결측·품질등급을 대조해 OUTLOOK 지역 집계 포함 기준을 정한다.
-3. 유럽 Regas capacity와 운영 이용률의 최신 공식 원천을 분리해 연결한다.
-4. JODI가 제공하지 않는 양자 LNG 교역과 장기 설비·수급 전망을 보완한다.
+2. 기존 DB의 15개 주 HDD/CDD와 JODI `CLOSTLV`를 초기 모델 입력으로 연결한다.
+3. GEM GGIT 전체 파일의 고정 다운로드와 갱신 규약을 확인해 미국 외 액화능력과
+   유럽 재기화능력을 같은 자산 기준으로 연결할 수 있는지 검증한다.
+4. JODI가 제공하지 않는 CN·AU·QA 재고와 양자 LNG 교역을 후속 원천으로 보완한다.
+5. 가격계열의 연결·월 집계·시차 정의는 후속 단계에서 확정한다.
 
 이는 데이터 확보 범위 합의이며, 운영 DB에 신규 테이블을 만들거나 수집기를 배포하는 결정은 아니다.
