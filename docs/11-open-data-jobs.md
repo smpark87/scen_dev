@@ -1,7 +1,7 @@
 ---
 title: OUTLOOK 공개 데이터 수집 작업
 document_date: 2026-09-22
-status: GDP 중앙 적재 완료, 금리·JODI-Gas job 공식 원천 dry-run 완료(배포 대기)
+status: GDP 중앙 적재 완료, 금리·JODI-Gas·GIE LNG job 공식 원천 dry-run 완료(배포 대기)
 ---
 
 # OUTLOOK 공개 데이터 수집 작업
@@ -179,7 +179,7 @@ JODI 정의상 이는 국가 영토 내 recoverable gas 월말 총량이며 LNG 
 
 | 순서 | 공백 | 후보·선결 확인 | 상태 |
 |---|---|---|---|
-| 4 | 유럽 Regas capacity·운영 지표 | GIE 설비 파일과 ALSI. 키 필요 여부·파일 이력·설비와 흐름의 정의 확인 | job 미구현 |
+| 4 | 유럽 Regas capacity·운영 지표 | GIE 설비 파일과 ALSI. 설비 명부를 먼저 적재하고 일별 운영치는 API key·crosswalk 확인 후 연결 | GIE job 구현, 배포 대기 |
 
 위 순서는 쉬운 자동 수집부터 진행하기 위한 제안이다. GIE의 키 발급 절차 등이 필요하면
 무인 수집 가능한 다른 항목부터 진행한다. 원본 다운로드와 검증을 실제 실행하기 전에는
@@ -200,3 +200,18 @@ planned 21행, under construction 6행이다. 설비·증설 단위의 연간 se
 확인 가능한 무인 고정 URL이 없으므로, 공식 원본을 통제된 S3 inbox에 반입한 뒤 parser job이
 자동 검증·snapshot 적재하는 방식으로 시작한다. 상세 판정과 DB 원칙은
 [유럽 재기화와 글로벌 액화 프로젝트 데이터 설계](12-lng-capacity-and-project-sources.md)를 따른다.
+
+### GIE LNG Database job
+
+NGIP의 `jobs/ingest_gie_lng.py`는 공식 페이지에서 현재 XLSX 링크와 발행일을 확인하고
+시트·20개 컬럼·국가·상태·용량 coverage를 검증한다. 공식 페이지 HTML, XLSX,
+정규화 자산 행, manifest와 해시를 S3에 먼저 보존한 뒤 중앙 DB의 발행본·자산 snapshot
+표에 적재한다. 동일 파일 재실행은 멱등이고 같은 날짜 정정 파일은 새 snapshot으로 남긴다.
+
+OUTLOOK은 `extract/gie_lng.py`로 기본 최신 발행본 또는 지정 release를 읽는다. 국가,
+정규화 상태, 가동연도로 필터할 수 있으며 용량 결측을 0으로 바꾸지 않는다. CloudFormation의
+주간 job 정의와 migration은 준비만 하고, 실제 배포·migration·최초 적재는 실행하지 않았다.
+
+2026-09-22 공식 전체 파일 dry-run은 2026-08-26판 77행·25개국·70개 터미널과
+연간 용량 74행을 통과했다. 운영 44, 계획 21, 건설 6행이며 S3·DB 쓰기는 0건이었다.
+범위형·조건부 용량은 단일값으로 추정하지 않고 원문을 보존한다.
