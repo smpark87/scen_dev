@@ -1,7 +1,7 @@
 ---
 title: OUTLOOK 공개 데이터 수집 작업
-document_date: 2026-09-21
-status: GDP 중앙 적재 완료, 금리 job 구현·공식 원천 dry-run 완료(배포 대기)
+document_date: 2026-09-22
+status: GDP 중앙 적재 완료, 금리·JODI-Gas job 공식 원천 dry-run 완료(배포 대기)
 ---
 
 # OUTLOOK 공개 데이터 수집 작업
@@ -126,11 +126,54 @@ policy = load_fed_rates(metrics=["us_fed_target_lower", "us_fed_target_upper",
 - [FRED 목표금리 상단](https://fred.stlouisfed.org/series/DFEDTARU)
 - [New York Fed EFFR 설명](https://www.newyorkfed.org/markets/reference-rates/effr)
 
-## 3. 다음 공개 데이터 후보
+## 3. JODI-Gas 국가별 월간 수급
+
+JODI-Gas 무료 공개 CSV를 NGIP job으로 연결했다. publisher API에서 매번 현재
+publication id와 활성 ZIP 이름을 확인하므로 URL의 숫자나 파일명을 고정하지 않는다.
+
+공식 전체 파일 dry-run 결과는 다음과 같다.
+
+- publication 27, 94개국, 315,758행
+- 2009-01~2026-07
+- 국가·flow·unit 조합 2,044계열
+- `(국가, 월, flow, unit)` 중복 0건, 빈 값 행 0건
+- 품질등급 1·2·3을 원천 그대로 보존
+
+제공 flow는 생산, 총/LNG/파이프라인 수출입, 재고 증감·월말 재고, 관측/계산 수요,
+발전·열 수요다. M3·TJ와 LNG KTONS를 각각 저장하며 0을 결측으로 바꾸지 않는다.
+국가가 보고하지 않은 관측은 행 자체가 없으므로 지역 합계에서 임의로 0으로 채우지 않는다.
+
+NGIP는 원본 ZIP·publisher 응답·정규화 자료·coverage·해시를 S3에 보존한 뒤
+`jodi_gas_{m3|tj|kt}_{flow}_{ISO2}` metric만 중앙 DB에서 원자 교체하도록 구현했다.
+315,758행을 메모리에 한꺼번에 올리지 않고 CSV 생성과 DB INSERT를 스트리밍한다.
+평일 데이터가 아니라 월간 공개이므로 스케줄 정의는 매주 월요일 14:30 UTC다.
+
+OUTLOOK은 `extract/jodi_gas.py`로 중앙 DB만 읽는다.
+
+```python
+from datetime import date
+from extract.jodi_gas import load_jodi_gas
+
+asia_lng = load_jodi_gas(
+    countries=["CN", "JP", "KR", "TW"], flows=["IMPLNG"],
+    units=["million_m3"], assessments=[1, 2], start=date(2010, 1, 1))
+```
+
+JODI의 국가 수출입은 양자 교역이 아니며 설비용량·전망도 아니다. `TOTDEMO` 관측 수요와
+`TOTDEMC` 계산 수요를 구분하고, 품질등급 2·3 및 국가별 누락월을 모델 입력에서 명시한다.
+
+배포·스케줄 활성화·운영 S3/DB 최초 적재는 사용자 지시에 따라 수행하지 않았다.
+
+공식 근거:
+
+- [JODI-Gas 다운로드](https://www.jodidata.org/gas/database/data-downloads.aspx)
+- [JODI-Gas flow·단위 정의](https://www.jodidata.org/gas/support/user-guide/data-available-in-the-jodi-gas-world-database.aspx)
+- [JODI-Gas 이용·인용 안내](https://www.jodidata.org/gas/support/user-guide.aspx)
+
+## 4. 다음 공개 데이터 후보
 
 | 순서 | 공백 | 후보·선결 확인 | 상태 |
 |---|---|---|---|
-| 3 | 해외 가스 생산·LNG 수출입·수요 | JODI-Gas 공식 다운로드. 실제 국가별 커버리지와 월간 결측 확인 | job 미구현 |
 | 4 | 유럽 Regas capacity·운영 지표 | GIE 설비 파일과 ALSI. 키 필요 여부·파일 이력·설비와 흐름의 정의 확인 | job 미구현 |
 
 위 순서는 쉬운 자동 수집부터 진행하기 위한 제안이다. GIE의 키 발급 절차 등이 필요하면
