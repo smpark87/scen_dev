@@ -1,7 +1,7 @@
 ---
 title: OUTLOOK 공개 데이터 수집 작업
 document_date: 2026-09-21
-status: 중앙 DB 적재·읽기 검증 완료, ECS 최초 실행 검증 대기
+status: GDP 중앙 적재 완료, 금리 job 구현·공식 원천 dry-run 완료(배포 대기)
 ---
 
 # OUTLOOK 공개 데이터 수집 작업
@@ -81,11 +81,55 @@ NGIP 수집·트랜잭션·업로드 실패·동시 실행 검사는 14개, OUTL
 - [명목 GDP](https://data.worldbank.org/indicator/NY.GDP.MKTP.CD)
 - [GDP 성장률](https://data.worldbank.org/indicator/NY.GDP.MKTP.KD.ZG)
 
-## 2. 다음 공개 데이터 후보
+## 2. Federal Reserve 금리
+
+기존 WTI 엑셀 `Macro!B50:B178`의 `US Policy rate` 129개 값(2014-01~2024-09)을
+FRED `FEDFUNDS`와 전부 대조했다. 이름과 달리 FOMC 목표금리가 아니라 월평균 EFFR이다.
+OUTLOOK은 원 모델 재현 계열과 정책 해석 계열을 다음처럼 분리한다.
+
+| metric | 원천 | 의미 |
+|---|---|---|
+| `us_effr_monthly_avg` | `FEDFUNDS` | 엑셀과 같은 월평균 EFFR |
+| `us_effr_daily` | `DFF` | 일별 EFFR |
+| `us_fed_target_lower` | `DFEDTARL` | 2008-12-16 이후 목표범위 하단 |
+| `us_fed_target_upper` | `DFEDTARU` | 2008-12-16 이후 목표범위 상단 |
+| `us_fed_target_mid` | `DFEDTAR`, 이후 상·하단 평균 | 장기 연속 정책금리 대표값 |
+
+모든 값은 `percent_pa`이며 `5.33`은 `5.33%`다. `us_fed_target_mid`는
+2008-12-15까지 단일 목표값, 다음 날부터 목표범위 중간값이다.
+
+NGIP의 `jobs/ingest_fed_rates.py`가 공개 FRED CSV 전체 이력을 검증하고 원본·해시를
+S3에 보존한 뒤 다섯 metric만 원자적으로 교체하도록 구현했다. EventBridge 정의는 평일
+15:00 UTC다. 공식 원천 dry-run에서 1954-07-01~2026-09-21, 56,288행, 다섯 metric의
+검증을 통과했고 S3·DB 쓰기는 0건이었다. 단위·기간·중복·최신성·상하단 정합성 및
+업로드/DB 실패 원자성을 자동 검사한다.
+
+scen_dev의 `extract/fed_rates.py`는 중앙 DB만 읽는다.
+
+```python
+from datetime import date
+from extract.fed_rates import load_excel_policy_rate, load_fed_rates
+
+excel_input = load_excel_policy_rate(start=date(2014, 1, 1))
+policy = load_fed_rates(metrics=["us_fed_target_lower", "us_fed_target_upper",
+                                 "us_fed_target_mid"])
+```
+
+금리 job의 배포, 스케줄 활성화, 중앙 DB 최초 적재는 사용자 지시에 따라 수행하지 않았다.
+승인 전까지 DB 조회는 빈 결과를 반환하며 FRED나 로컬 파일로 자동 우회하지 않는다.
+
+공식 근거:
+
+- [FRED FEDFUNDS](https://fred.stlouisfed.org/series/FEDFUNDS)
+- [FRED DFF](https://fred.stlouisfed.org/series/DFF)
+- [FRED 목표금리 하단](https://fred.stlouisfed.org/series/DFEDTARL)
+- [FRED 목표금리 상단](https://fred.stlouisfed.org/series/DFEDTARU)
+- [New York Fed EFFR 설명](https://www.newyorkfed.org/markets/reference-rates/effr)
+
+## 3. 다음 공개 데이터 후보
 
 | 순서 | 공백 | 후보·선결 확인 | 상태 |
 |---|---|---|---|
-| 2 | 미국 정책금리 | Fed 공개 계열. 엑셀 금리가 목표금리인지 실효금리인지 먼저 구분 | job 미구현 |
 | 3 | 해외 가스 생산·LNG 수출입·수요 | JODI-Gas 공식 다운로드. 실제 국가별 커버리지와 월간 결측 확인 | job 미구현 |
 | 4 | 유럽 Regas capacity·운영 지표 | GIE 설비 파일과 ALSI. 키 필요 여부·파일 이력·설비와 흐름의 정의 확인 | job 미구현 |
 
