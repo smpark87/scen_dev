@@ -17,8 +17,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 REVIEW_FILE = ROOT / "scripts" / "security_reviewed.json"
 JS_SUFFIXES = {".js", ".mjs", ".jsx", ".ts", ".tsx"}
-PYTHON_ROOTS = {"analysis", "extract", "scripts", "tests"}
-JS_ROOTS = {"static/js", "tests/js"}
+PYTHON_ROOTS = {"analysis", "extract", "outlook", "scripts", "tests"}
+JS_ROOTS = {"static/js", "outlook/static/js", "tests/js"}
 
 # 차단 규칙에는 안전한 사용을 숨기는 예외를 두지 않는다.
 JS_BLOCK = {

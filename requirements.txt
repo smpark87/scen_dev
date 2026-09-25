@@ -9,3 +9,5 @@ statsmodels>=0.14    # 회귀 진단, 시계열
 umap-learn>=0.5      # 2D 투영 (t-SNE 대안)
 matplotlib>=3.8
 plotly>=5.22         # 인터랙티브 HTML
+Flask>=3.1,<4        # OUTLOOK 로컬 제품 화면
+waitress>=3,<4       # 디버거 없는 로컬 HTTP 서버

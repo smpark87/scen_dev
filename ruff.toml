@@ -1,0 +1,8 @@
+# 오류와 유지보수 위험만 검사한다. 서식 취향 때문에 주석을 줄이지 않는다.
+line-length = 100
+target-version = "py313"
+exclude = [".venv", "docs"]
+
+[lint]
+select = ["E", "W", "F", "I", "B", "UP"]
+ignore = ["E501"]

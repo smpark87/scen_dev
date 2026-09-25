@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block content %}
+{% for message in get_flashed_messages() %}<div class="notice success" role="status">{{ message }}</div>{% endfor %}
+<section class="page-heading">
+  <div><div class="eyebrow">Understand the present. Frame what comes next.</div><h1>{{ saved.name if saved else 'Perspectives' }}</h1><p>Choose the forces to watch — and examine the evidence behind them.</p></div>
+  <div class="heading-action">{% if saved %}<span class="badge teal">Frozen perspective</span><a class="button" href="{{ url_for('perspectives', as_of=evidence.as_of) }}">Open a new view</a>{% else %}<a class="button primary" href="#save-perspective">Build a perspective <span aria-hidden="true">↗</span></a>{% endif %}</div>
+</section>
+<form method="get" action="{{ url_for('perspectives') }}" class="context-bar">
+  <label>Market<select name="market" aria-label="Market"><option value="us-gas">US gas / Henry Hub</option></select></label>
+  <label>Observation cutoff<input type="date" name="as_of" value="{{ evidence.as_of }}" min="1980-01-01" max="{{ today }}" required></label>
+  <input type="hidden" name="axis" value="{{ axis.id }}">
+  <button type="submit">{{ 'Open another cutoff' if saved else 'Apply cutoff' }}</button>
+  <span class="context-divider"></span>
+  <div class="context-stat"><strong>{{ evidence.available_count }} <span>/ {{ evidence.metrics|length }}</span></strong><span>Signposts with usable observations</span></div>
+  <div class="context-stat"><strong>{{ evidence.axes|length }}</strong><span>Research axis candidates</span></div>
+</form>
+{% if saved %}
+<div class="notice">Saved {{ saved.saved_at[:19]|replace('T', ' ') }} UTC. This view preserves its observations, catalog and selected axes; it does not query the current database.</div>
+{% elif evidence.status == 'unavailable' %}
+<div class="notice warning" role="alert"><strong>Observations could not be loaded.</strong> Check the database connection and apply the cutoff again. Axis hypotheses remain available; saving is paused.</div>
+{% elif evidence.status == 'empty' %}
+<div class="notice warning"><strong>No usable observations at this cutoff.</strong> The current database does not establish what was known then. The catalog below is today's research starting point, not a reconstruction of the axes of that era.</div>
+{% endif %}
+<details class="method-note"><summary>Research basis <span>Curated candidates · Descriptive observations · Relationships unvalidated</span></summary>
+  <div class="method-content"><p>These six axes are a starting catalog for US gas research. They are not an AI-selected ranking, historical discoveries or validated drivers. Missing data does not mean an axis is unimportant.</p><p>Only completed months are shown. Daily flows use monthly means; weekly stocks and rig counts use the last observation in the month. Changes compare the same month one year earlier, when available. They are not significance tests.</p><p>Both observation dates and collection timestamps must be on or before the cutoff. Collection timestamps use the database's recorded calendar date; source publication times and historical revisions are not reconstructed. This is not a validated historical replay.</p></div>
+</details>
+<div class="workspace-grid">
+  <aside class="axis-rail" aria-label="Research axis candidates">
+    <div class="section-label">Explore axes <span>01 — 06</span></div>
+    {% for item in evidence.axes %}
+    {% set count = namespace(value=0) %}{% for key in item.metrics %}{% if evidence.metrics[key].latest %}{% set count.value = count.value + 1 %}{% endif %}{% endfor %}
+    <a class="axis-card{% if item.id == axis.id %} selected{% endif %}" href="{{ url_for('saved_perspective', identifier=saved.id, axis=item.id) if saved else url_for('perspectives', as_of=evidence.as_of, axis=item.id) }}" {% if item.id == axis.id %}aria-current="true"{% endif %}>
+      <div class="axis-card-top"><span class="axis-number">{{ item.number }}</span>{% if saved and item.id in selected %}<span class="badge teal">Selected</span>{% else %}<span class="axis-type">Research candidate</span>{% endif %}</div>
+      <h2>{{ item.title }}</h2><p>{{ item.question }}</p>
+      <div class="axis-availability"><span class="dot {{ 'has-data' if count.value else '' }}"></span>{{ count.value }} / {{ item.metrics|length }} signposts observed{% if not item.metrics %} · Qualitative{% endif %}<span class="arrow" aria-hidden="true">↗</span></div>
+    </a>
+    {% endfor %}
+  </aside>
+  <section class="axis-detail" aria-labelledby="axis-title">
+    <div class="detail-heading"><div><div class="eyebrow">Axis {{ axis.number }} / Research hypothesis</div><h2 id="axis-title">{{ axis.title }}</h2><p>{{ axis.description }}</p></div><span class="badge">Not yet validated</span></div>
+    <section class="panel mechanism"><div class="section-label">Proposed influence path <span>Direction & lag to be tested</span></div>
+      <ol class="influence-path">{% for step in axis.path %}<li><span>{{ '%02d'|format(loop.index) }}</span>{{ step }}</li>{% endfor %}</ol>
+      <p>{{ axis.mechanism }}</p>
+    </section>
+    <section class="observations-section" aria-labelledby="observations-title"><div class="section-label" id="observations-title">Observable signposts <span>Completed months · Year-over-year change</span></div>
+      <div class="signpost-grid">
+      {% for key in axis.metrics %}{% set metric = evidence.metrics[key] %}
+      <article class="signpost panel">
+        <div class="signpost-heading"><h3>{{ metric.label }}</h3>{% if metric.stale %}<span class="badge amber">Lagging</span>{% elif metric.latest %}<span class="source-label">{{ metric.source }}</span>{% else %}<span class="badge amber">No usable data</span>{% endif %}</div>
+        {% if metric.latest %}
+        <div class="metric-value">{{ metric.latest.value|number }} <span>{{ metric.unit }}</span></div>
+        <div class="metric-period">{{ metric.latest.month[:7] }} · {{ metric.aggregation }}</div>
+        <div class="metric-change">{% if metric.change is not none %}<strong>{{ '+' if metric.change > 0 else '' }}{{ metric.change|number }} {{ metric.unit }}</strong> vs {{ metric.reference.month[:7] }}{% else %}Year-over-year comparison unavailable{% endif %}</div>
+        <svg class="sparkline" viewBox="0 0 300 84" role="img" aria-label="{{ metric.label }} monthly history. Range {{ metric.chart.min|number }} to {{ metric.chart.max|number }} {{ metric.unit }}. Missing months are not connected.">
+          <path class="chart-grid" d="M8 14H292M8 42H292M8 70H292"/>
+          {% for segment in metric.chart.segments %}{% if ' ' in segment %}<polyline points="{{ segment }}"/>{% else %}<circle cx="{{ segment.split(',')[0] }}" cy="{{ segment.split(',')[1] }}" r="3"/>{% endif %}{% endfor %}
+        </svg>
+        <div class="chart-labels"><span>{{ metric.points[0].month[:7] }}</span><span>Range {{ metric.chart.min|number }}–{{ metric.chart.max|number }}</span><span>{{ metric.latest.month[:7] }}</span></div>
+        <details class="evidence-details"><summary>Source & observations</summary><dl><dt>Source</dt><dd>{{ metric.source }}</dd><dt>Last observation</dt><dd>{{ metric.latest.last_observation }}</dd><dt>Collected by</dt><dd>{{ metric.latest.collected_at[:19] }}</dd><dt>Inputs in latest month</dt><dd>{{ metric.latest.observations }}</dd><dt>Excluded invalid / incomplete inputs</dt><dd>{{ metric.excluded }}</dd></dl><div class="history-table"><table><caption>{{ metric.label }} · {{ metric.unit }}</caption><thead><tr><th>Month</th><th>Value</th><th>Inputs</th></tr></thead><tbody>{% for point in metric.points|reverse %}<tr><td>{{ point.month[:7] }}</td><td>{{ point.value|number }}</td><td>{{ point.observations }}</td></tr>{% endfor %}</tbody></table></div></details>
+        {% else %}<p class="empty-metric">No completed month passes the date, source, unit and coverage checks at this cutoff.</p><div class="source-label">Expected: {{ metric.source }} · {{ metric.unit }}</div>{% endif %}
+      </article>
+      {% endfor %}
+      {% if not axis.metrics %}<div class="panel qualitative-empty"><span class="eyebrow">Qualitative evidence</span><h3>A visible question, with evidence still to connect.</h3><p>Policy documents and project events need dated sources and reviewed links before this axis can be evaluated. Add your research question to the perspective notes below.</p></div>{% endif %}
+      </div>
+    </section>
+    <div class="research-grid"><section class="panel research-card"><span class="eyebrow">Evidence gap</span><h3>What we still need</h3><p>{{ axis.missing }}</p></section><section class="panel research-card"><span class="eyebrow">Validation agenda</span><h3>What would support this axis?</h3><p>{{ axis.test }}</p></section></div>
+    <section class="panel build-panel" id="save-perspective"><div class="section-label">{{ 'Your saved perspective' if saved else 'Build your perspective' }} <span>{{ 'Frozen research record' if saved else 'Select axes to follow' }}</span></div>
+    {% if saved %}
+      <div class="saved-axis-list">{% for item in evidence.axes %}{% if item.id in selected %}<span class="badge teal">{{ item.title }}</span>{% endif %}{% endfor %}</div><h3>Research notes</h3><p class="saved-note">{{ saved.note or 'No notes were added.' }}</p>
+    {% else %}
+      <form method="post" action="{{ url_for('save') }}" id="perspective-form">
+        <input type="hidden" name="csrf" value="{{ session.csrf }}"><input type="hidden" name="draft_id" value="{{ draft_id }}">
+        <fieldset><legend>Include the axes you want to monitor</legend><div class="axis-options">{% for item in evidence.axes %}<label><input type="checkbox" name="axes" value="{{ item.id }}"><span>{{ item.title }}</span></label>{% endfor %}</div></fieldset>
+        <label class="field-label" for="perspective-name">Perspective name</label><input id="perspective-name" name="name" maxlength="100" placeholder="e.g. US gas — autumn review" required>
+        <label class="field-label" for="perspective-note">Research notes <span>Optional · assumptions, questions and evidence to investigate</span></label><textarea id="perspective-note" name="note" rows="3" maxlength="3000" placeholder="What do you believe matters, and what would change your view?"></textarea>
+        <div class="save-actions"><p>Stores the axes, notes and observations currently shown in this view.</p><button class="primary" type="submit" {% if evidence.status == 'unavailable' %}disabled{% endif %}>Save perspective</button></div><p id="selection-feedback" class="selection-feedback" role="status"></p>
+      </form>
+    {% endif %}
+    </section>
+  </section>
+</div>
+<section class="saved-section"><div class="section-label">Saved perspectives <span>On this computer · Latest 30</span></div>{% if unreadable %}<p class="notice warning">Some local snapshots could not be read.</p>{% endif %}<div class="saved-grid">{% for item in recent %}<a class="panel saved-card" href="{{ url_for('saved_perspective', identifier=item.id) }}"><strong>{{ item.name }}</strong><span>{{ item.saved_at[:10] }} <span aria-hidden="true">↗</span></span></a>{% else %}<p class="muted">No saved perspectives yet. Choose your axes and save the first view.</p>{% endfor %}</div></section>
+{% endblock %}

@@ -15,6 +15,7 @@ tags: [charter, principles, scope, scenario planning]
 > 수급·가격 전망부터 작게 구현한다. 비정형 근거와 전망 가정의 연결은 처음부터 설계에 포함한다.
 > 아래 헌장은 이전 설계로 보존하며, 최신 합의와 충돌하는 범위·구현 순서는 09 문서를 우선한다.
 > 아래의 전체 Regime·Transition·Scenario 체계를 초기 구현의 필수조건으로 간주하지 않는다.
+> 로컬 개발 Python은 `../shared/.venv`를 NGIP·LAI Finance와 공유한다. 아래의 "별도 venv"는 과거 설계 표현이며 운영 배포 이미지와 프로젝트 의존성 분리 원칙은 유지한다(`SETUP.md`).
 
 ### 0. 확정 수준 표기 — 무엇이 얼마나 굳어 있는가
 

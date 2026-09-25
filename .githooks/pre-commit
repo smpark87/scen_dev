@@ -4,7 +4,11 @@ set -eu
 repo=$(git rev-parse --show-toplevel)
 cd "$repo"
 
-if [ -x .venv/Scripts/python.exe ]; then
+if [ -x ../shared/.venv/Scripts/python.exe ]; then
+  py=../shared/.venv/Scripts/python.exe
+elif [ -x ../shared/.venv/bin/python ]; then
+  py=../shared/.venv/bin/python
+elif [ -x .venv/Scripts/python.exe ]; then
   py=.venv/Scripts/python.exe
 elif [ -x .venv/bin/python ]; then
   py=.venv/bin/python
@@ -17,4 +21,5 @@ else
   exit 1
 fi
 
-exec "$py" scripts/security_source_gate.py --staged
+"$py" scripts/security_source_gate.py --staged
+"$py" scripts/ratchet.py

@@ -1,0 +1,4 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="error-panel"><span class="eyebrow">{{ error.code }}</span><h1>Unable to open this view</h1><p>{{ error.description }}</p><a class="button" href="{{ url_for('perspectives') }}">Return to Perspectives</a></section>
+{% endblock %}

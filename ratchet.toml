@@ -1,0 +1,15 @@
+# scen_dev 품질 기준선. 악화 때문에 올릴 때는 근거를 작업 기록에 남긴다.
+# Python 테스트는 정의된 함수 수를 센다. 파라미터화된 실행 건수는 세지 않는다.
+[limits]
+review_code_lines = 1200
+max_code_lines = 2500
+
+[baseline]
+silent_handlers = 0
+# Perspectives 회귀 테스트를 포함한 첫 커밋 기준선.
+test_functions = 36
+ruff = 26
+
+# 1200 코드 줄을 넘은 파일은 분할하거나 이유를 한 줄 적는다.
+# 2500 코드 줄 이상은 예외 없이 분할한다.
+[large_files]

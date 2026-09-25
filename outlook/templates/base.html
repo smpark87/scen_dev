@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Perspectives · LIORA OUTLOOK{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/outlook.css') }}">
+  <script src="{{ url_for('static', filename='js/perspectives.js') }}" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="shell-header">
+  <a class="brand" href="{{ url_for('perspectives') }}" aria-label="LIORA Outlook home">
+    <img src="{{ url_for('static', filename='img/liora-mark.svg') }}" width="34" height="34" alt="">
+    <span class="wordmark">LIORA</span>
+  </a>
+  <span class="brand-divider"></span>
+  <span class="product-name">
+    <svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m3 10 14-7 4 7-14 7zM17 3l4-2 3 6-3 3M6 11l3 5M12 15v6m0-6-5 7m5-7 5 7"/></svg>
+    OUTLOOK
+  </span>
+  <span class="workspace-label">Research workspace <span class="local-dot"></span> Local</span>
+</header>
+<nav class="product-nav" aria-label="Outlook stages">
+  <a href="{{ url_for('perspectives') }}" class="active" aria-current="page"><span>01</span> Perspectives</a>
+  <button disabled title="Available after Perspectives validation"><span>02</span> Projections <small>Planned</small></button>
+  <button disabled title="Available after the scenario model is connected"><span>03</span> What If Analysis <small>Planned</small></button>
+</nav>
+<main id="main">{% block content %}{% endblock %}</main>
+<footer class="shell-footer"><span>LIORA OUTLOOK · Perspectives / first release</span><span>Read-only observations · Local research snapshots</span></footer>
+</body>
+</html>

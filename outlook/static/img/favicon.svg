@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <!-- LIORA favicon — 축약형 마크를 타일 위에 올린다.
+       타일을 쓰는 이유: 파비콘은 밝은 탭바와 어두운 탭바 양쪽에 놓이는데
+       CSS 가 닿지 않아 core 를 테마에 따라 뒤집을 수 없다. 타일이 자기 바탕을
+       들고 다니면 두 경우 모두에서 같게 읽힌다.
+       색을 인라인한 유일한 파일이다 — templates/_logo.html 과 달리 자립해야 한다.
+       기하가 바뀌면 _logo.html 의 compact 마크와 함께 고쳐야 한다.
+       ⚠️ 위성 여섯을 그대로 둔다 — 재무 파비콘은 축약형이라 위성을 버렸지만
+       LIORA 는 여섯이 마크의 뜻이다. 대신 자를 굵히고 노드를 키운다. -->
+  <defs>
+    <linearGradient id="loFavPt" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#EA002C"/>
+      <stop offset="1" stop-color="#FF7A00"/>
+    </linearGradient>
+  </defs>
+  <rect width="48" height="48" rx="10" fill="#13161d"/>
+  <g transform="translate(24 24) scale(0.84) translate(-24 -24)">
+    <g stroke="#4a5a86" stroke-width="3" stroke-linecap="round" fill="none">
+      <line x1="24" y1="24" x2="24" y2="11.6"/>
+      <line x1="24" y1="24" x2="32.7" y2="19.0"/>
+      <line x1="24" y1="24" x2="35.5" y2="30.6"/>
+      <line x1="24" y1="24" x2="24" y2="37.4"/>
+      <line x1="24" y1="24" x2="11.8" y2="31.2"/>
+      <line x1="24" y1="24" x2="14.7" y2="18.3"/>
+    </g>
+    <circle cx="24" cy="7.5" r="4" fill="#4a9eff"/>
+    <circle cx="35.1" cy="17.6" r="3.4" fill="#0ea5a4"/>
+    <circle cx="24" cy="40.8" r="3.8" fill="#00d4aa"/>
+    <circle cx="8.7" cy="33.0" r="4" fill="#0ea5a4"/>
+    <circle cx="12.3" cy="16.9" r="3.4" fill="#4a9eff"/>
+    <circle cx="38.8" cy="32.5" r="4.2" fill="url(#loFavPt)"/>
+    <circle cx="24" cy="24" r="7.4" fill="#eaf0fe"/>
+  </g>
+</svg>

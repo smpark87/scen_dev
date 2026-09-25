@@ -1,0 +1,2 @@
+# Git Bash 훅의 셔뱅과 셸 명령은 Windows 체크아웃에서도 LF로 유지한다.
+.githooks/* text eol=lf

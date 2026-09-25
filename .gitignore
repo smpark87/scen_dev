@@ -8,3 +8,9 @@ __pycache__/
 .pytest_cache/
 debug/
 .ipynb_checkpoints/
+.ruff_cache/
+.claude/settings.local.json
+*.log
+logs/
+# 내부 원본 보고서·워크북은 로컬 참고 자료로만 사용한다.
+docs/reference/

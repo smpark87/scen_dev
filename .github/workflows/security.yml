@@ -1,4 +1,4 @@
-name: Security checks
+name: Development checks
 
 on:
   push:
@@ -10,6 +10,31 @@ permissions:
   contents: read
 
 jobs:
+  python:
+    name: Python tests and quality ratchet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install runtime and development dependencies
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Compile authored Python
+        run: |
+          python -m compileall -q analysis extract scripts tests assemble.py config.py db.py
+          if [ -d outlook ]; then python -m compileall -q outlook; fi
+
+      - name: Quality ratchet
+        run: python scripts/ratchet.py --list
+
+      - name: Full test suite
+        run: python -m pytest -q
+
   source-gate:
     name: Headquarters source security gate
     runs-on: ubuntu-latest
