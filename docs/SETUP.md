@@ -11,7 +11,7 @@ if (-not (Test-Path ..\shared\.venv\Scripts\python.exe)) { python -m venv ..\sha
 git config --local core.hooksPath .githooks
 ```
 
-공용 `../shared/requirements.txt`가 이 저장소의 `requirements-dev.txt`까지 참조한다. 패키지 변경 전에는 전체 공용 명세로 dry-run을 하고, 관련 프로젝트를 검사한 뒤 lock을 갱신한다. 한 프로젝트의 명세만으로 공용 환경을 sync하거나 기존 패키지를 제거하지 않는다. 현재 저장소의 기존 `.venv`는 이전 개발 환경으로, 공용 실행 경로에서는 사용하지 않는다. 가상환경 폴더는 Git에 넣지 않는다.
+공용 `../shared/requirements.txt`가 이 저장소의 `requirements-dev.txt`까지 참조한다. 패키지 변경 전에는 전체 공용 명세로 dry-run을 하고, 관련 프로젝트를 검사한 뒤 lock을 갱신한다. 한 프로젝트의 명세만으로 공용 환경을 sync하거나 기존 패키지를 제거하지 않는다. 이 저장소에는 별도 `.venv`를 만들지 않는다. 가상환경 폴더는 Git에 넣지 않는다.
 새 PC에서는 형제 `shared/requirements.txt`와 `shared/requirements.lock`을 함께 준비한다. 이 파일들은 `scen_dev` 저장소에 들어 있지 않다.
 
 ## 작업 시작과 검증
