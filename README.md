@@ -1,4 +1,4 @@
-# LIORA OUTLOOK 개발 저장소
+# scen_dev — LIORA OUTLOOK 개발 저장소
 
 제품 방향은 [docs/09-outlook-direction.md](docs/09-outlook-direction.md), 협업·보안·배포 규칙은 [AGENTS.md](AGENTS.md)를 따른다. 과거 헌장과 현재 방향이 다르면 09 문서를 우선한다.
 
